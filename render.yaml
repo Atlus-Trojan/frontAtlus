@@ -1,0 +1,39 @@
+# Blueprint do staging do web (Render). Ver README, seção "Staging".
+services:
+  - type: web
+    name: atlus-web
+    runtime: static
+    # pnpm fixado no package.json, sem depender do corepack do ambiente de build.
+    buildCommand: npx -y pnpm@10.34.3 install --frozen-lockfile && npx -y pnpm@10.34.3 build
+    staticPublishPath: ./dist
+    autoDeployTrigger: checksPass # só publica com o CI verde
+    pullRequestPreviewsEnabled: false
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: VITE_APP_ENV
+        value: staging
+      # https://api.<domínio>, sem barra no fim.
+      - key: VITE_API_URL
+        sync: false
+    routes:
+      # SPA: toda rota cai no index.html, e o React Router decide.
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      - path: /index.html
+        name: Cache-Control
+        value: no-cache
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
